@@ -1,0 +1,25 @@
+First of all we decided the outline of the project, that is as follows:
+
+1. Home Page
+
+2. Login Page/ Sign Up Page
+
+3. Scan Image:
+      a) Take picture
+      b) Scan QR Code
+      c) Upload Image from Gallery
+      d) Scan BArcode
+      
+4. Convert image information to text
+
+5. Store information to Database
+
+6. Extract useful information
+
+7. Categorize information
+
+8. Send information to Auditor
+
+9. Using ML algorithm accept/reject invoice request. 
+
+10. Gererate Report category wise.
