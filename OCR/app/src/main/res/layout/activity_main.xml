@@ -31,7 +31,6 @@
         android:id="@+id/ivImage"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_above="@id/progress_bar"
         android:layout_below="@id/edit_text_file_name"
         android:layout_marginTop="16dp" />
 
@@ -40,22 +39,29 @@
         android:id="@+id/button_upload"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:text="Upload"
         android:layout_alignParentBottom="true"
-        android:layout_centerHorizontal="true"
-        android:text="Upload" />
+        android:layout_toEndOf="@+id/progressBar"
+        android:layout_marginStart="38dp" />
 
-    <TextView
-        android:id="@+id/text_view_show_uploads"
+    <!--<TextView
+        android:id="@+id/qroutput"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignBottom="@+id/button_upload"
-        android:layout_alignTop="@+id/button_upload"
         android:layout_marginStart="25dp"
         android:layout_toEndOf="@+id/button_upload"
         android:gravity="center"
-        android:text="Show Uploads"
-        android:textSize="16sp" />
-
+        android:text="QR Output"
+        android:textSize="16sp"
+        android:layout_alignTop="@+id/progress_bar" />-->
+<ProgressBar
+    android:id="@+id/progressBar"
+    android:layout_centerInParent="true"
+    android:layout_width="30dp"
+    android:visibility="gone"
+    android:layout_height="30dp"
+    />
 
 
 

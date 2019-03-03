@@ -2,6 +2,7 @@ package com.example.dinalaptop.ocr;
 
 import android.app.Activity;
 import android.content.ContentResolver;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -20,8 +21,10 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.android.gms.common.api.CommonStatusCodes;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.vision.barcode.Barcode;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.storage.FirebaseStorage;
@@ -31,6 +34,8 @@ import com.google.firebase.storage.StorageTask;
 import com.google.firebase.storage.UploadTask;
 import com.squareup.picasso.Picasso;
 
+import java.io.ByteArrayOutputStream;
+
 public class MainActivity extends AppCompatActivity {
     ImageView ivImage;
     Button capture;
@@ -38,13 +43,12 @@ public class MainActivity extends AppCompatActivity {
     private static final int PICK_IMAGE_REQUEST = 1;
 
     private Button mButtonUpload;
-    private TextView mTextViewShowUploads;
     private EditText mEditTextFileName;
     private ProgressBar mProgressBar;
     private StorageReference mStorageRef;
     private DatabaseReference mDatabaseRef;
     Uri selectedImageUri;
-
+    TextView barcoderesult;
     private StorageTask mUploadTask;
 
     @Override
@@ -54,15 +58,16 @@ public class MainActivity extends AppCompatActivity {
         ivImage = findViewById(R.id.ivImage);
         capture =  findViewById(R.id.Capture);
         mButtonUpload = findViewById(R.id.button_upload);
-        mTextViewShowUploads = findViewById(R.id.text_view_show_uploads);
         mEditTextFileName = findViewById(R.id.edit_text_file_name);
+        mProgressBar = findViewById(R.id.progressBar);
         mStorageRef = FirebaseStorage.getInstance().getReference("uploads");
         mDatabaseRef = FirebaseDatabase.getInstance().getReference("uploads");
+        barcoderesult = (TextView) findViewById(R.id.qroutput);
+
         capture.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-
-                SelectImage();
+                SelectImage(view);
             }
         });
         mButtonUpload.setOnClickListener(new View.OnClickListener() {
@@ -71,22 +76,17 @@ public class MainActivity extends AppCompatActivity {
                 if (mUploadTask != null && mUploadTask.isInProgress()) {
                     Toast.makeText(MainActivity.this, "Upload in progress", Toast.LENGTH_SHORT).show();
                 } else {
+                    mProgressBar.setVisibility(View.VISIBLE);
                     uploadFile();
                 }
 
             }
         });
-        mTextViewShowUploads.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-
-            }
-        });
     }
 
-    private void SelectImage() {
+    private void SelectImage(final View myview) {
 
-        final CharSequence[] items = {"Camera", "Gallery", "Cancel"};
+        final CharSequence[] items = {"Camera", "Gallery","QRCode" ,"Cancel"};
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Add Image");
@@ -108,6 +108,10 @@ public class MainActivity extends AppCompatActivity {
                     intent.setType("image/*");
                     startActivityForResult(intent, SELECT_FILE);
 
+                }
+                else if(items[i].equals("QRCode")){
+                    getBarcode(myview);
+
                 } else if (items[i].equals("Cancel")) {
                     dialogInterface.dismiss();
                 }
@@ -117,25 +121,51 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    public void getBarcode(View view){
+        Intent intent = new Intent(this,ScanBarcodeAct.class);
+        startActivityForResult(intent,0);
+    }
+
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
         if (resultCode == Activity.RESULT_OK) {
 
-            if (requestCode == REQUEST_CAMERA && resultCode == RESULT_OK)  {
+            if (requestCode == REQUEST_CAMERA)  {
 
                 Bundle bundle = data.getExtras();
                 final Bitmap bmp = (Bitmap) bundle.get("data");
                 ivImage.setImageBitmap(bmp);
-
+                selectedImageUri = getImageUri(MainActivity.this,bmp);
             } else if (requestCode == SELECT_FILE) {
 
-                Uri selectedImageUri = data.getData();
+                selectedImageUri = data.getData();
                 ivImage.setImageURI(selectedImageUri);
                 Picasso.with(this).load(selectedImageUri).into(ivImage);
             }
 
         }
+        if(requestCode==0){
+            if (resultCode == CommonStatusCodes.SUCCESS){
+                if (data!=null){
+                    Barcode barcode = data.getParcelableExtra("barcode");
+                    Intent intent = new Intent(this,TextOutput.class);
+                    startActivityForResult(intent,0);
+                    barcoderesult.setText("BarCode Value:" + barcode.displayValue);
+                }else {
+                    barcoderesult.setText("No Barcode Found");
+                }
+            }
+        }else {
+
+        }
+    }
+
+    public Uri getImageUri(Context inContext, Bitmap inImage) {
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        inImage.compress(Bitmap.CompressFormat.JPEG, 100, bytes);
+        String path = MediaStore.Images.Media.insertImage(inContext.getContentResolver(), inImage, "Title", null);
+        return Uri.parse(path);
     }
 
     private String getFileExtension(Uri uri) {
@@ -153,14 +183,6 @@ public class MainActivity extends AppCompatActivity {
                     .addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
                         @Override
                         public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
-                            Handler handler = new Handler();
-                            handler.postDelayed(new Runnable() {
-                                @Override
-                                public void run() {
-                                    mProgressBar.setProgress(0);
-                                }
-                            }, 500);
-
                             Toast.makeText(MainActivity.this, "Upload successful", Toast.LENGTH_LONG).show();
                             Upload upload = new Upload(mEditTextFileName.getText().toString().trim(),
                                     taskSnapshot.getMetadata().getReference().getDownloadUrl().toString());
@@ -171,6 +193,7 @@ public class MainActivity extends AppCompatActivity {
                     .addOnFailureListener(new OnFailureListener() {
                         @Override
                         public void onFailure(@NonNull Exception e) {
+                            mProgressBar.setVisibility(View.GONE);
                             Toast.makeText(MainActivity.this, e.getMessage(), Toast.LENGTH_SHORT).show();
                         }
                     })
@@ -178,7 +201,11 @@ public class MainActivity extends AppCompatActivity {
                         @Override
                         public void onProgress(UploadTask.TaskSnapshot taskSnapshot) {
                             double progress = ((100.0 * taskSnapshot.getBytesTransferred())/taskSnapshot.getTotalByteCount());
-                            mProgressBar.setProgress((int) progress);
+                            //mProgressBar.setProgress((int) progress);
+                            if(progress==100){
+                                mProgressBar.setVisibility(View.GONE);
+
+                            }
                         }
                     });
         } else {
